@@ -2,15 +2,23 @@ __all__ = [
     "ALLOY_BINARY",
     "format_path",
     "format_source",
+    "is_available",
     "run_verbatim",
     "validate_path",
     "validate_source",
 ]
 
+import shutil
 import subprocess
 from pathlib import Path
 
 from .utils import ALLOY_BINARY, Status, alloy_run_path, alloy_run_text, run_verbatim
+
+
+def is_available() -> bool:
+    if ALLOY_BINARY == "alloy":
+        return bool(shutil.which("alloy"))
+    return True
 
 
 def format_source(

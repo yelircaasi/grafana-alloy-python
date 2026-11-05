@@ -49,10 +49,7 @@ jobs:
           # Format: "dir_name:asset_prefix:executable_name"
           TARGETS=(
             "linux-amd64:alloy-linux-amd64:alloy"
-            "linux-arm64:alloy-linux-arm64:alloy"
-            "darwin-amd64:alloy-darwin-amd64:alloy"
             "darwin-arm64:alloy-darwin-arm64:alloy"
-            "windows-amd64:alloy-windows-amd64.exe:alloy.exe"
           )
 
           for entry in "${TARGETS[@]}"; do

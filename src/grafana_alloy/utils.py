@@ -46,7 +46,7 @@ def _get_binary_path() -> str:
     )
 
     if not binary_path.exists():
-        raise FileNotFoundError(f"Embedded Alloy binary not found at: {binary_path}")
+        return "alloy"
 
     # Ensure executable permissions on Unix systems
     if not sys.platform.startswith("win"):
