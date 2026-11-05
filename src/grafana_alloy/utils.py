@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import enum
 import os
-import platform
+import shutil
 import subprocess
 import sys
 from collections.abc import Iterable
@@ -26,29 +26,16 @@ class AlloyError(Exception):
     """Custom exception raised for Alloy wrapper errors."""
 
 
-
 def _get_binary_path() -> str:
     """Dynamically resolves and verifies the path to the platform-specific binary."""
-    extension = ".exe" if sys.platform.startswith("win") else ""
-    executable_name = f"alloy{extension}"
+    binary_path = os.environ.get("ALLOY_PATH") or shutil.which("alloy")
 
-    machine = platform.machine().lower()
-    if machine in ("x86_64", "amd64"):
-        arch_dir = "amd64"
-    elif machine in ("aarch64", "arm64"):
-        arch_dir = "arm64"
-    else:
-        raise AlloyError(f"Unsupported architecture: {machine}")
+    if not binary_path:
+        return ""
 
-    # Example path: src/alloy_wrapper/bin/linux-amd64/alloy
-    binary_path = (
-        Path(__file__).parent / "bin" / f"{sys.platform}-{arch_dir}" / executable_name
-    )
+    if not (binary_path := Path(binary_path)).exists():
+        return ""
 
-    if not binary_path.exists():
-        return "alloy"
-
-    # Ensure executable permissions on Unix systems
     if not sys.platform.startswith("win"):
         os.chmod(binary_path, 0o755)
 
@@ -56,6 +43,10 @@ def _get_binary_path() -> str:
 
 
 ALLOY_BINARY = _get_binary_path()
+
+
+def is_available() -> bool:
+    return bool(ALLOY_BINARY)
 
 
 def _make_command(command: Iterable[Any]) -> list[str]:

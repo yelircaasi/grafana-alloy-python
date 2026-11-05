@@ -33,48 +33,6 @@ jobs:
           echo "version=${ALLOY_VERSION}" >> $GITHUB_OUTPUT
           echo "Targeting Alloy version: ${ALLOY_VERSION}"
 
-      - name: Install Sigstore CLI (Cosign)
-        uses: sigstore/cosign-installer@v3
-
-      - name: Download, Verify, and Place All Binaries
-        env:
-          ALLOY_VERSION: v${{ steps.version.outputs.version }}
-        run: |
-          BASE_URL="https://github.com/grafana/alloy/releases/download/${ALLOY_VERSION}"
-          
-          echo "Downloading SHA256SUMS manifest..."
-          curl -fL -o "SHA256SUMS" "${BASE_URL}/SHA256SUMS"
-
-          # Map target directory names to official asset names and executable names
-          # Format: "dir_name:asset_prefix:executable_name"
-          TARGETS=(
-            "linux-amd64:alloy-linux-amd64:alloy"
-            "darwin-arm64:alloy-darwin-arm64:alloy"
-          )
-
-          for entry in "${TARGETS[@]}"; do
-            IFS=':' read -r dir_name asset_prefix exec_name <<< "$entry"
-            
-            echo "Processing $dir_name ($asset_prefix)..."
-            curl -fL -o "${asset_prefix}.zip" "${BASE_URL}/${asset_prefix}.zip"
-            
-            # Verify checksum against manifest
-            awk -v asset="${asset_prefix}.zip" '$2 == asset {print; found=1} END {if (!found) exit 1}' SHA256SUMS > expected_sum.txt
-            sha256sum -c expected_sum.txt
-            
-            # Extract and place into src/grafana_alloy/bin/<dir_name>/<exec_name>
-            DEST_DIR="src/grafana_alloy/bin/${dir_name}"
-            mkdir -p "$DEST_DIR"
-            unzip -p "${asset_prefix}.zip" "${asset_prefix}" > "$DEST_DIR/${exec_name}"
-            chmod +x "$DEST_DIR/${exec_name}"
-            
-            # Cleanup temp zip for this iteration
-            rm -f "${asset_prefix}.zip" expected_sum.txt
-          done
-          
-          rm -f SHA256SUMS
-          echo "All binaries successfully downloaded, verified, and placed."
-
       - name: Build Wheel using uv
         run: |
           uv build --wheel
