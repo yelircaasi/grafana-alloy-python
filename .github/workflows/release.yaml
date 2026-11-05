@@ -13,23 +13,23 @@ jobs:
       matrix:
         include:
           - target: linux-amd64
-            pkg: alloy-wrapper-linux-amd64
+            pkg: linux-amd64
             asset_name: alloy-linux-amd64
             filename: alloy
           - target: linux-arm64
-            pkg: alloy-wrapper-linux-arm64
+            pkg: linux-arm64
             asset_name: alloy-linux-arm64
             filename: alloy
           - target: darwin-amd64
-            pkg: alloy-wrapper-darwin-amd64
+            pkg: darwin-amd64
             asset_name: alloy-darwin-amd64
             filename: alloy
           - target: darwin-arm64
-            pkg: alloy-wrapper-darwin-arm64
+            pkg: darwin-arm64
             asset_name: alloy-darwin-arm64
             filename: alloy
           - target: windows-amd64
-            pkg: alloy-wrapper-windows-amd64
+            pkg: windows-amd64
             asset_name: alloy-windows-amd64.exe
             filename: alloy.exe
 
@@ -94,15 +94,20 @@ jobs:
           #   ${{ matrix.filename }}
           echo "Binary verified cryptographically."
 
-      - name: Move Binary to Subpackage
+      - name: Move Binary and Build Wheel
         env:
           FILENAME: ${{ matrix.filename }}
           PKG_NAME: ${{ matrix.pkg }}
         run: |
           chmod +x "${FILENAME}"
-          DEST_DIR="packages/${PKG_NAME}/src/${PKG_NAME}/bin"
+          # Matches your local structure: packages/<pkg>/data/bin/
+          DEST_DIR="packages/${PKG_NAME}/data/bin"
           mkdir -p "$DEST_DIR"
           mv "${FILENAME}" "$DEST_DIR/${FILENAME}"
+          
+          # Build the wheel using uv from that package directory
+          cd packages/${PKG_NAME}
+          uv build --wheel
 
       - name: Build Wheel using uv
         working-directory: packages/${{ matrix.pkg }}
