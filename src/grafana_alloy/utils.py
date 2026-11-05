@@ -4,9 +4,10 @@ import enum
 import os
 import shutil
 import subprocess
-import sys
+import tempfile
 from collections.abc import Iterable
 from pathlib import Path
+from subprocess import CompletedProcess
 from typing import Any
 
 
@@ -18,7 +19,7 @@ class Status(enum.Enum):
         return self == Status.SUCCESS
 
     @classmethod
-    def from_completed(cls, result: subprocess.CompletedProcess) -> Status:
+    def from_completed(cls, result: CompletedProcess) -> Status:
         return cls.SUCCESS if result.returncode == 0 else cls.FAILURE
 
 
@@ -36,9 +37,6 @@ def _get_binary_path() -> str:
     if not (binary_path := Path(binary_path)).exists():
         return ""
 
-    if not sys.platform.startswith("win"):
-        os.chmod(binary_path, 0o755)
-
     return str(binary_path)
 
 
@@ -53,33 +51,35 @@ def _make_command(command: Iterable[Any]) -> list[str]:
     return [ALLOY_BINARY, *map(str, command)]
 
 
-def alloy_run_text(
-    command: Iterable[Any], input_: str, verbose: bool = True, **kwargs
-) -> tuple[str, Status, subprocess.CompletedProcess[str]]:
-    result = subprocess.run(  # noqa: PLW1510
-        _make_command(command),
-        input=input_,
-        text=True,
-        capture_output=True,
-    )
-
-    if verbose:
-        print("TODO")
-
-    status = Status.from_completed(result)
-    return result.stdout, status, result
+def print_stdout_and_stderr(result: CompletedProcess[str]) -> None:
+    print("=" * 37 + " ALLOY " + "=" * 36)
+    if result.stdout:
+        print(result.stdout)
+    if result.stderr:
+        print(result.stderr)
+    print("=" * 80)
 
 
 def alloy_run_path(
     command: Iterable[Any], verbose: bool = True, **kwargs
-) -> tuple[Status, subprocess.CompletedProcess[str]]:
+) -> tuple[Status, CompletedProcess[str]]:
     result = subprocess.run(_make_command(command), capture_output=True, text=True)  # noqa: PLW1510
 
     if verbose:
-        print("TODO")
+        print_stdout_and_stderr(result)
 
     status = Status.from_completed(result)
     return status, result
+
+
+def alloy_run_text(
+    command: Iterable[Any], text: str, verbose: bool = True, **kwargs
+) -> tuple[str, Status, CompletedProcess[str]]:
+    tmp_path = Path(tempfile.mkstemp(suffix=".alloy")[1])
+    tmp_path.write_text(text)
+    status, result = alloy_run_path((*command, tmp_path), verbose=verbose, **kwargs)
+
+    return (tmp_path.read_text() if status else ""), status, result
 
 
 def run_verbatim(command: Iterable[Any], **kwargs) -> subprocess.CompletedProcess:

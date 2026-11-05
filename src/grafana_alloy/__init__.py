@@ -8,8 +8,8 @@ __all__ = [
     "validate_source",
 ]
 
-import subprocess
 from pathlib import Path
+from subprocess import CompletedProcess
 
 from .utils import (
     ALLOY_BINARY,
@@ -23,29 +23,26 @@ from .utils import (
 
 def format_source(
     text: str, verbose: bool = True
-) -> tuple[str, Status, subprocess.CompletedProcess[str]]:
+) -> tuple[str, Status, CompletedProcess[str]]:
+    output, status, result = alloy_run_text(("fmt", "--write"), text, verbose=verbose)
 
-    return alloy_run_text(("fmt", "-"), text)
+    return output or text, status, result
 
 
 def format_path(
     path: Path, verbose: bool = True
-) -> tuple[Status, subprocess.CompletedProcess[str]]:
-    return alloy_run_path(("fmt", path))
+) -> tuple[Status, CompletedProcess[str]]:
+    return alloy_run_path(("fmt", "--write", path))
 
 
 def validate_source(
     text: str, verbose: bool = True
-) -> tuple[str, Status, subprocess.CompletedProcess[str]]:
-    output, status, result = alloy_run_text(["validate", "-"], text, verbose=verbose)
+) -> tuple[str, Status, CompletedProcess[str]]:
 
-    if verbose:
-        print("TODO")
-
-    return (output if status else ""), status, result
+    return alloy_run_text(("validate",), text, verbose=verbose)
 
 
 def validate_path(
     path: Path, verbose: bool = True
-) -> tuple[Status, subprocess.CompletedProcess[str]]:
+) -> tuple[Status, CompletedProcess[str]]:
     return alloy_run_path(("validate", path))

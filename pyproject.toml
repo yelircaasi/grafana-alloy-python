@@ -1,6 +1,6 @@
 [project]
 name = "grafana_alloy"
-version = "1.21.3"
+version = "1.21.0"
 description = "Python wrapper for Grafana Alloy"
 authors = [{name = "Isaac Riley", email = "yelircaasi@proton.me"}]
 readme = "README.md"
