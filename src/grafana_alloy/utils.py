@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import enum
-import importlib.resources
+import os
+import platform
 import subprocess
 import sys
 from collections.abc import Iterable
@@ -21,26 +22,37 @@ class Status(enum.Enum):
         return cls.SUCCESS if result.returncode == 0 else cls.FAILURE
 
 
-def _get_binary_path() -> str:
-    """Dynamically resolves the path to the platform-specific binary package."""
-    if sys.platform.startswith("linux"):
-        package_name = "alloy_wrapper_linux_amd64"
-        bin_name = "alloy"
-    elif sys.platform == "darwin":
-        package_name = "alloy_wrapper_darwin_arm64"
-        bin_name = "alloy"
-    elif sys.platform == "win32":
-        package_name = "alloy_wrapper_windows_amd64"
-        bin_name = "alloy.exe"
-    else:
-        raise OSError(f"Unsupported platform: {sys.platform}")
+class AlloyError(Exception):
+    """Custom exception raised for Alloy wrapper errors."""
 
-    binary_path = importlib.resources.files(package_name).joinpath("bin", bin_name)
-    path_ = Path(str(binary_path))
-    if not path_.exists():
-        msg = f"Path not found: {path_}"
-        raise OSError(msg)
-    return str(path_)
+
+
+def _get_binary_path() -> str:
+    """Dynamically resolves and verifies the path to the platform-specific binary."""
+    extension = ".exe" if sys.platform.startswith("win") else ""
+    executable_name = f"alloy{extension}"
+
+    machine = platform.machine().lower()
+    if machine in ("x86_64", "amd64"):
+        arch_dir = "amd64"
+    elif machine in ("aarch64", "arm64"):
+        arch_dir = "arm64"
+    else:
+        raise AlloyError(f"Unsupported architecture: {machine}")
+
+    # Example path: src/alloy_wrapper/bin/linux-amd64/alloy
+    binary_path = (
+        Path(__file__).parent / "bin" / f"{sys.platform}-{arch_dir}" / executable_name
+    )
+
+    if not binary_path.exists():
+        raise FileNotFoundError(f"Embedded Alloy binary not found at: {binary_path}")
+
+    # Ensure executable permissions on Unix systems
+    if not sys.platform.startswith("win"):
+        os.chmod(binary_path, 0o755)
+
+    return str(binary_path)
 
 
 ALLOY_BINARY = _get_binary_path()

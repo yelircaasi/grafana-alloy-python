@@ -5,12 +5,6 @@ description = "Python wrapper for Grafana Alloy"
 authors = [{name = "Isaac Riley", email = "yelircaasi@proton.me"}]
 readme = "README.md"
 requires-python = ">=3.11,<3.16"
-dependencies = [
-    # uv evaluates these markers at install time and downloads only the matching wheel
-    'alloy-wrapper-linux-amd64   == 1.21.3; sys_platform == "linux"  and platform_machine == "x86_64"',
-    'alloy-wrapper-darwin-arm64  == 1.21.3; sys_platform == "darwin" and platform_machine == "arm64"',
-    'alloy-wrapper-windows-amd64 == 1.21.3; sys_platform == "win32"  and platform_machine == "amd64"',
-]
 
 [dependency-groups]
 test = ["pytest >= 8.3"]
