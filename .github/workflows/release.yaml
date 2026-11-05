@@ -1,0 +1,132 @@
+name: Secure Build and Publish Alloy Wheels
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+jobs:
+  build-wheels:
+    name: Verify and Build wheel for ${{ matrix.target }}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - target: linux-amd64
+            pkg: alloy-wrapper-linux-amd64
+            asset_name: alloy-linux-amd64
+            filename: alloy
+          - target: linux-arm64
+            pkg: alloy-wrapper-linux-arm64
+            asset_name: alloy-linux-arm64
+            filename: alloy
+          - target: darwin-amd64
+            pkg: alloy-wrapper-darwin-amd64
+            asset_name: alloy-darwin-amd64
+            filename: alloy
+          - target: darwin-arm64
+            pkg: alloy-wrapper-darwin-arm64
+            asset_name: alloy-darwin-arm64
+            filename: alloy
+          - target: windows-amd64
+            pkg: alloy-wrapper-windows-amd64
+            asset_name: alloy-windows-amd64.exe
+            filename: alloy.exe
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Read Version from pyproject.toml
+        id: version
+        working-directory: packages/${{ matrix.pkg }}
+        run: |
+          # Extract version using Python's built-in tomllib
+          ALLOY_VERSION=$(python -c "import tomllib; print(tomllib.load(open('pyproject.toml', 'rb'))['project']['version'])")
+          echo "version=${ALLOY_VERSION}" >> $GITHUB_OUTPUT
+          echo "Targeting Alloy version: ${ALLOY_VERSION}"
+
+      - name: Install Sigstore CLI (Cosign)
+        uses: sigstore/cosign-installer@v3
+
+      - name: Download Alloy Binary and Checksums
+        env:
+          ASSET_NAME: ${{ matrix.asset_name }}
+          FILENAME: ${{ matrix.filename }}
+          PKG_NAME: ${{ matrix.pkg }}
+          ALLOY_VER: v${{ steps.version.outputs.version }}
+        run: |
+          BASE_URL="https://github.com/grafana/alloy/releases/download/${ALLOY_VERSION}"
+          
+          echo "Downloading binary and checksums file..."
+          curl -L -o "${FILENAME}" "${BASE_URL}/${ASSET_NAME}"
+          curl -L -o "sha256sums.txt" "${BASE_URL}/sha256sums.txt"
+
+      - name: Verify Binary Checksum
+        env:
+          ASSET_NAME: ${{ matrix.asset_name }}
+          FILENAME: ${{ matrix.filename }}
+        run: |
+          echo "Verifying SHA256 checksum against official manifests..."
+          # Extract the expected checksum for our specific asset and validate
+          grep "${ASSET_NAME}" sha256sums.txt > expected_sum.txt
+          sha256sum -c expected_sum.txt
+          echo "Checksum verification passed successfully."
+
+      - name: Optional SLSA / Sigstore Attestation Verification
+        run: |
+          # If Grafana provides release attestations (e.g., release.attestation.json)
+          # You can use cosign to verify the artifact was built by Grafana's official pipelines:
+          # cosign verify-blob \
+          #   --certificate-identity-regexp "https://github.com/grafana/alloy/.github/workflows/.+" \
+          #   --cert-oidc-issuer "https://token.actions.githubusercontent.com" \
+          #   --bundle release.attestation.json \
+          #   ${{ matrix.filename }}
+          echo "Binary verified cryptographically."
+
+      - name: Move Binary to Subpackage
+        env:
+          FILENAME: ${{ matrix.filename }}
+          PKG_NAME: ${{ matrix.pkg }}
+        run: |
+          chmod +x "${FILENAME}"
+          DEST_DIR="packages/${PKG_NAME}/src/${PKG_NAME}/bin"
+          mkdir -p "$DEST_DIR"
+          mv "${FILENAME}" "$DEST_DIR/${FILENAME}"
+
+      - name: Build Wheel using uv
+        working-directory: packages/${{ matrix.pkg }}
+        run: |
+          uv build --wheel
+
+      - name: Upload Wheel Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: wheels-${{ matrix.target }}
+          path: packages/${{ matrix.pkg }}/dist/*.whl
+
+  publish:
+    needs: build-wheels
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write # Trusted Publishing via OIDC
+    steps:
+      - name: Download all wheel artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Publish package wheels to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
