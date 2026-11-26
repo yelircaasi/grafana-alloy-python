@@ -1,13 +1,18 @@
 [project]
 name = "grafana_alloy"
-version = "1.21.0"
-description = "Python wrapper for Grafana Alloy"
+version = "1.21.1"
+description = "Build Grafana Alloy configuration files from Python and serialize them to Alloy syntax."
+license = "MIT"
+keywords = ["grafana", "alloy", "river", "pulumi", "configuration"]
 authors = [{name = "Isaac Riley", email = "yelircaasi@proton.me"}]
 readme = "README.md"
 requires-python = ">=3.11,<3.16"
 
+[project.optional-dependencies]
+pulumi = ["pulumi>=3"]
+
 [dependency-groups]
-test = ["pytest >= 8.3"]
+dev = ["pytest>=8", "pulumi>=3", "ruff>=0.6", "mypy>=1.10"]
 
 [build-system]
 requires = ["hatchling"]
@@ -15,3 +20,12 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/grafana_alloy"]
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.mypy]
+strict = true
