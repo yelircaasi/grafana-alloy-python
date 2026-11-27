@@ -1,0 +1,93 @@
+// Basic observability pipeline for a Kubernetes node
+
+logging {
+  level  = "info"
+  format = "logfmt"
+}
+
+// Prometheus metrics
+prometheus.remote_write "mimir" {
+  endpoint {
+    url = "https://mimir.example.com/api/v1/push"
+
+    basic_auth {
+      username = "metrics"
+      password = sys.env("MIMIR_PASSWORD")
+    }
+  }
+}
+
+prometheus.scrape "node" {
+  targets = [{
+    __address__ = "localhost:9100",
+  }]
+  scrape_interval = "15s"
+  forward_to      = [prometheus.remote_write.mimir.receiver]
+}
+
+prometheus.scrape "app" {
+  targets         = discovery.kubernetes.pods.targets
+  scrape_interval = "30s"
+  job_name        = "kubernetes-pods"
+  forward_to      = [prometheus.remote_write.mimir.receiver]
+
+  clustering {
+    enabled = true
+  }
+}
+
+discovery.kubernetes "pods" {
+  role = "pod"
+}
+
+// Loki logs
+loki.write "loki" {
+  endpoint {
+    url = "https://loki.example.com/loki/api/v1/push"
+
+    basic_auth {
+      username = "logs"
+      password = sys.env("LOKI_PASSWORD")
+    }
+  }
+}
+
+loki.source.file "varlogs" {
+  targets = [{
+    __path__ = "/var/log/*.log",
+  }]
+  forward_to = [loki.write.loki.receiver]
+}
+
+// Simple OTel pipeline
+otelcol.receiver.otlp "default" {
+  grpc {
+    endpoint = "0.0.0.0:4317"
+  }
+  http {
+    endpoint = "0.0.0.0:4318"
+  }
+
+  output {
+    metrics = [otelcol.processor.batch.default.input]
+    logs    = [otelcol.processor.batch.default.input]
+    traces  = [otelcol.processor.batch.default.input]
+  }
+}
+
+otelcol.processor.batch "default" {
+  output {
+    metrics = [otelcol.exporter.otlp.default.input]
+    logs    = [otelcol.exporter.otlp.default.input]
+    traces  = [otelcol.exporter.otlp.default.input]
+  }
+}
+
+otelcol.exporter.otlp "default" {
+  client {
+    endpoint = "otel-collector.example.com:4317"
+    tls {
+      insecure = false
+    }
+  }
+}

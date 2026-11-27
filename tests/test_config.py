@@ -12,7 +12,14 @@ class _Mocks(pulumi.runtime.Mocks):
         return {}
 
 
+""" ALT
+try:
+    asyncio.get_running_loop()
+except RuntimeError:
+    asyncio.set_event_loop(asyncio.new_event_loop())
+
 pulumi.runtime.set_mocks(_Mocks(), project="p", stack="s", preview=False)
+"""
 
 
 def test_full_example() -> None:
@@ -102,6 +109,8 @@ def test_invalid_values() -> None:
 
 @pulumi.runtime.test
 def test_pulumi_output() -> pulumi.Output[None]:
+    pulumi.runtime.set_mocks(_Mocks(), project="p", stack="s", preview=False)
+
     secret = pulumi.Output.secret("p@ss")
     cfg = AlloyConfig([Block("x", "y", url=pulumi.Output.from_input("http://h"), pw=secret)])
     rendered = cfg.render()

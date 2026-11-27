@@ -10,7 +10,7 @@ from . import render
 from .block import Block
 
 if TYPE_CHECKING:
-    import pulumi
+    import pulumi  # type: ignore
 
 
 class _Comment:
@@ -19,13 +19,13 @@ class _Comment:
 
 
 class AlloyConfig:
-    """An ordered collection of top-level blocks that renders to one Alloy file."""
+    """An ordered collection of top-level blocks that renders to a single Alloy file."""
 
     def __init__(self, blocks: Iterable[Block] = ()) -> None:
         self._items: list[Block | _Comment] = []
         self._ids: set[tuple[str, str]] = set()
-        for blk in blocks:
-            self.add(blk)
+        for block in blocks:
+            self.add(block)
 
     @property
     def blocks(self) -> list[Block]:
@@ -83,6 +83,6 @@ class AlloyConfig:
 def _join(segments: list[Any]) -> str | pulumi.Output[str]:
     if not any(render.is_output(s) for s in segments):
         return "".join(segments)
-    import pulumi
+    import pulumi  # type: ignore
 
     return pulumi.Output.all(*segments).apply("".join)

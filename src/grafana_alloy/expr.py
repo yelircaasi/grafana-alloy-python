@@ -14,6 +14,10 @@ def is_identifier(text: str) -> bool:
     return _IDENT.fullmatch(text) is not None
 
 
+def is_path(text: str) -> bool:
+    return _PATH.fullmatch(text) is not None
+
+
 @dataclass(frozen=True)
 class Ref:
     """An unquoted reference such as ``prometheus.remote_write.default.receiver``."""
