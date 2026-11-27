@@ -1,4 +1,4 @@
-"""Build Grafana Alloy configuration files from Python."""
+"""Build Grafana Alloy configuration files from Python. Supports pulumi.Output values."""
 
 from __future__ import annotations
 
@@ -14,6 +14,12 @@ import pulumi  # type: ignore[import-not-found]
 
 
 class _Helpers:
+    """Utilities mainly focused on serialization of values and blocks to Alloy syntax.
+
+    Rendering produces a list of segments: plain strings, plus ``pulumi.Output``
+    objects when any value is an Output. Segments are joined eagerly when no
+    Output is present, and lazily through ``Output.all`` otherwise.
+    """
     _IDENTIFIER_PATTERN = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
     _PATH_PATTERN = re.compile(r"[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)*")
 
@@ -29,12 +35,6 @@ class _Helpers:
     def is_path(cls, text: str) -> bool:
         return cls._PATH_PATTERN.fullmatch(text) is not None
 
-    """Serialization of values and blocks to Alloy syntax.
-
-    Rendering produces a list of segments: plain strings, plus ``pulumi.Output``
-    objects when any value is an Output. Segments are joined eagerly when no
-    Output is present, and lazily through ``Output.all`` otherwise.
-    """
 
     @classmethod
     def is_output(cls, value: Any) -> bool:
@@ -229,9 +229,6 @@ class Builtins:
     def concat(*arrays: Any) -> Call:
         """``array.concat(...)``."""
         return Call("array.concat", *arrays)
-
-
-# BLOCKS
 
 
 class Block:
