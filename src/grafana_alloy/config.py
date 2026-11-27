@@ -83,6 +83,6 @@ class AlloyConfig:
 def _join(segments: list[Any]) -> str | pulumi.Output[str]:
     if not any(render.is_output(s) for s in segments):
         return "".join(segments)
-    import pulumi  # type: ignore
+    import pulumi
 
     return pulumi.Output.all(*segments).apply("".join)
